@@ -1,0 +1,154 @@
+---
+title: "STAT645 - Homework 1"
+author: "Salih Kilicli"
+date: "9/3/2019"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: 
+    latex_engine: lualatex
+editor_options:
+  chunk_output_type: inline
+---
+
+**Problem 1: For the income by degree and gender data set, contained in the file inc_deg_data.csv (Course Content/Data/incdeg):**
+
+**(a) Make side-by-side box plots of income, with separate boxes for each of female arts (gender = 0, degree= 0), female science (gender= 0, degree= 1), male arts (gender= 1, degree = 0), and male science (gender= 1, degree= 1). Include labels on the x-axis to indicate which box goes with which category.**
+
+```{r}
+setwd("~/Desktop/STAT645/Data")
+incdeg <- read.csv("inc_deg_data.csv", header=TRUE)
+boxplot(income ~ gender + degree, data=incdeg, main="Income by Gender and Degree",
+xlab = ("Female Arts Male Arts Female Science Male Science"), ylab="Income", col=rainbow(4), las=1)
+```
+
+**(b) Report the mean, median, standard deviation, and first and third quartiles of income.**
+
+```{r}
+Mu = mean(incdeg$income)
+cat("The mean of the income is =",1000*Mu,'Dollars')
+
+Med =median(incdeg$income)
+cat("The median of the income is =",1000*Med,'Dollars')
+
+sigma = sd(incdeg$income)
+cat("The standart deviation of the income is =",1000*sigma,'Dollars')
+
+Q=quantile(incdeg$income, probs=c(0.25,0.75))
+cat("The 1st and 3rd Quartiles of income are, respectively =",1000*Q,'Dollars')
+```
+
+**(c) Report the mean, median, standard deviation, and first and third quartiles of income, now with income expressed in dollars (rather than 1,000s of dollars).**
+
+```{r}
+Mu = mean(incdeg$income)
+cat("The mean of the income is $",Mu)
+
+Med =median(incdeg$income)
+cat("The median of the income is $",Med)
+
+sigma = sd(incdeg$income)
+cat("The standart deviation of the income is $",sigma)
+
+Q=quantile(incdeg$income, probs=c(0.25,0.75))
+cat("The 1st and 3rd quartiles of income are, respectively $",Q[1],"$",Q[2])
+```
+
+**(d) Report the mean, median, standard deviation, and first and third quartiles of income (in 1,000's of dollars), now excluding the minimum and maximum values.**
+
+```{r}
+Income = sort(incdeg$income)[-c(1,100)]
+Mu = mean(Income)
+cat("The mean of the Income is ",1000*Mu,'Dollars')
+
+Med =median(Income)
+cat("The median of the Income is ",1000*Med,'Dollars')
+
+sigma = sd(Income)
+cat("The standart deviation of the Income is ",1000*sigma,'Dollars')
+
+Q=quantile(Income, probs=c(0.25,0.75))
+cat("The 1st and 3rd quartiles of Income are, respectively ",1000*Q,'Dollars')
+```
+
+
+**Problem 2: Set your random seed to be 101 (do set.seed(101)). Create a 100×5 matrix of random realizations from the standard normal distribution (normal with mean 0 and standard deviation 1).**
+
+**(a) Report the column means (a vector of length 5). Demonstrate how you would do this (i) using the apply function and (ii) using vector/matrix arithmetic.**
+
+```{r}
+set.seed(101)
+A = matrix(rnorm(500,0,1), nrow=100, byrow =TRUE)
+
+M1 = apply(A,2,mean)
+cat("The means of the columns of A using apply function is \n",M1)
+
+M2 = t(rep(1/100,times=100))%*%A
+cat("The means of the columns of A using matrix multiplication is \n",M2)
+```
+
+**(b) Make a histogram of the row ranges; i.e., compute the range (maximum minus minimum) for each row, and make a histogram of the resulting 100 ranges.**
+
+```{r}
+R = apply(A,1,range)
+Range = R[2,]-R[1,]
+hist(Range)
+```
+
+**Problem 3. Consider the gamma distribution with shape and scale parameters both equal 2; this corresponds to a mean of 4 and a variance of 8. Simulate samples of size $n = 10, 30, 90$ from this distribution, repeating $B = 1000$ times. For each simulated data set, compute the sample mean. Thus, you will have $B = 1000$ sample means for each of the three sample sizes. For each sample size, draw a probability histogram (as opposed to a frequency histogram, you can do this by setting probability = TRUE as an option to the hist function). Overlay the normal curve that would apply if the central limit theorem could be assumed to hold. Report the resulting three figures as a single three-panel figure.**
+
+```{r}
+par(mfrow=c(1,3))
+X = c()
+
+for (n in c(10,30,90)){
+  for (i in 1:1000){
+    A = rgamma(n,shape=2, scale =2)
+    X[i] = mean(A)
+  }
+  a = seq(0,8,by=0.01)
+  hist(X, main = paste("Sample size = ",n), probability = TRUE) xfit = seq(min(X), max(X), length = 100)
+  yfit <- dnorm(xfit, mean = 4, sd = sqrt(8/n))
+  lines(xfit, yfit, col = "black", lwd = 1)
+}
+```
+
+**Problem 4. In R create a matrix, named A, with 5 rows and 4 columns, such that the first three rows are random numbers generated from $normal(0, 1)$ distribution while the last two rows contain random numbers generated from $Uniform(−2, 2)$. Create another matrix, named B, with 5 rows and 4 columns, such that the all elements are random draw from the $Beta(2, 1)$ distribution. For creating A and B, use set.seed(101) and set.seed(102), respectively.**
+
+**(a) Provide the code to obtain the column sum of A (sum of all entries for each column).**
+
+```{r}
+set.seed(101)
+A = matrix(c(rnorm(12,0,1),runif(8,-2,2)), nrow = 5, byrow = T) set.seed(102)
+B = matrix(rbeta(20,2,1), nrow = 5, byrow = T)
+Acolsum = apply(A,2,sum)
+cat("The sum of the elements in the columns of A are\n",Acolsum)
+```
+
+**(b) Provide the code to obtain $A + B$, then print the $(4, 2)$ and $(4, 4)$th entries of this sum.**
+
+```{r}
+C= A+ B 
+C[4,2]
+C[4,4]
+```
+
+**(c) Provide the code to obtain $AB^{T}$, then print the $(4, 2)$ and $(4, 4)$th entries of this multiplication.**
+
+```{r}
+M = A%*%t(B)
+M[4,2]
+M[4,4]
+```
+
+**(d) Obtain the inverse of $B^{T}A$, and also obtain the determinant of $B^{T}A$.**
+
+```{r}
+N = t(B)%*%A
+K = solve(t(B)%*%A)
+cat('The inverse of t(B)A matrix is given by:\n')
+K
+
+D = det(K)
+cat('The determinant of t(B)A matrix is given by:', D)
+```
