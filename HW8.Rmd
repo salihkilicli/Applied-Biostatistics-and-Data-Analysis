@@ -1,0 +1,198 @@
+---
+title: "STAT645 - Homework 8"
+author: "Salih Kilicli"
+date: "10/1/2019"
+output:
+  html_document:
+    df_print: kable
+    highlight: zenburn
+  pdf_document: default
+  word_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r}
+rm(list=ls())
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Problem 1: Consider the dataset on 44 subjects given in the article https://www.bmj.com/content/317/7156/468.1. Consider *prednisolone* or *no prednisolone* as the binary treatment variable, and use it as the explanatory variable and fit lognormal, exponential, and Weibull model to the data. Then choose the best model and justify your choice.**
+
+```{r}
+library(knitr)
+library(survival)
+a=c(2,6,12,54,56,68,89,96,96,125,128,131,140,141,143,145,146,148,162,168,173,181,
+    2,3,4,7,10,22,28,29,32,37,40,41,54,61,63,71,127,140,146,158,167,182)
+b=c(0*1:4+1,0,0*1:4+1,0*1:5,1,0,1,0,0,1,0,0,0*1:16+1,0*1:6)
+data1 = data.frame("Treatment"=rep(c(1,0), each=22), "Time"=a, "Delta"=b)
+logn=survreg(Surv(Time, Delta)~Treatment, data=data1, dist="lognormal")
+exp=survreg(Surv(Time, Delta)~Treatment, data=data1, dist="exponential")
+weib=survreg(Surv(Time, Delta)~Treatment, data=data1, dist="weibull")
+AIC = c(extractAIC(logn)[2],extractAIC(exp)[2],extractAIC(weib)[2])
+names(AIC)=c("Lognormal", "Exponential", "Weibull")
+print(AIC)
+```
+
+We will choose **lognormal** model since it gives the lowest AIC value.
+
+**(a) Obtain the analytical expression of the 25th, 50th, and 75th percentile of the time-to-event of the best fitted model for the two groups.**
+
+$p^{th}$ percentile of $T$ is given by: $inf(t: \hat{S}(t) \leq (1-p))$. Since we know the analytical value of $S(t)$, it can be found by solving the equality $$S(t) = 1 -\Phi\Bigg(\dfrac{log(t)-{\beta_0}-x_0^T{\beta_1}}{{\sigma}}\Bigg) = (1-p)$$ where $\Phi$ is the **cdf** of $Normal(0,1)$ distribution. Then, solving above equation for $t$ yields,
+$$ t = exp\ \Big(\Phi^{-1}(p){\sigma}+{\beta_0}+x_0^T{\beta_1}\Big). $$
+
+Notice, in the above equation $x_0=1$ for Group 1 (Treatment=1) and $x_0=0$ for Group 2 (Treatment=0) and $\Phi^{-1}(p)=qnorm(p)$ in R. Finally, the values of $Q1$, $Q2$ and $Q3$ can be given by setting $p=0.25, 0.5, 0.75$ in the equation above, respectively.
+
+**(b) Estimate the above three percentiles and obtain the 95% CI for the percentiles for the two groups separately.**
+
+Estimated values of $Q1$, $Q2$ and $Q3$ can be found by using $\hat{\beta_0}, \hat{\beta_1}, \hat{\sigma}$ estimates from lognormal model and setting $p=0.25, 0.5, 0.75$ in the equation above, respectively.
+
+```{r}
+library(msm)
+
+logn  =survreg(Surv(Time, Delta)~Treatment, data=data1, dist="lognormal")
+bhat_0=logn$coefficients[1]  # gives the estimate for intercept - \hat{beta}_0
+bhat_1=logn$coefficients[2]  # gives the estimate for treatment - \hat{beta}_1
+sigmahat=logn$scale          # gives the estimate for sigmahat - \hat{sigma}
+p=c(0.25,0.5,0.75)
+treatment=c(1,0)
+qp=lower=upper=integer()
+
+for(j in 1:2){
+  x=treatment[j]
+  for(i in 1:3){
+    ep=sigmahat*qnorm(p[i])+bhat_0+x*bhat_1 #First group - Treatment == 1, Second - Treatment == 0
+    qp[i]=exp(ep)
+    sestar= deltamethod(~(log(exp(ep))-x1-x*x2)/exp(x3),c(bhat_0,bhat_1,log(sigmahat)),logn$var) #se for quartiles
+    lower[i]=qp[i]-1.96*sestar
+    upper[i]=qp[i]+1.96*sestar
+  }
+  cat("Confidence intervals for Group",j,"\n")
+  cat(c("                 ","Q1" ,"      ", "Q2","     ", "Q3"),"\n")
+  cat("Lower bounds: ", lower,"\n")
+  cat("Estimates   : ", qp,"\n")
+  cat("Upper bounds: ", upper,"\n \n")
+}
+```
+
+**(c) Using a nonparametric method obtain the estimate and 95% CI for the 25th, 50th, and 75th percentiles of the time-to-event for the two groups separately. Compare and comment on the differences between these nonparametric estimates and the parametric estimates obtained in step (b).**
+
+```{r}
+t = data1$Time[1:22]; delta1=data1$Delta[1:22]   #or you can use data1$Time[data1$Treatment==1]
+c = data1$Time[23:44]; delta2=data1$Delta[23:44] #or you can use data1$Time[data1$Treatment==0]
+one = survfit(Surv(t, delta1)~1)
+two = survfit(Surv(c, delta2)~1)
+quantile(one, prob=c(0.25,0.5,0.75), conf.int=TRUE)
+quantile(two, prob=c(0.25,0.5,0.75), conf.int=TRUE)
+```
+
+I believe the non-parametric method yields infintely big time-to-event values so that we don't have an upper bound for some of the confidence intervals. You can also see it is an increasing function of time since $Q1 < Q2 < Q3$ in each case. However, the parametric method yields very narrow confidence intervals which means delta method gives small standard error values for the problem.
+
+**Problem 2: Consider the colon data available in the survival package of R. Consider the subset where etype = 1 only (exclude the subjects who experienced death). You may find a descent description of the data at https://stat.ethz.ch/R-manual/R-devel/library/survival/html/colon.html. Consider the following seven explanatory variables, sex, age, perfor, adhere, nodes, differ, extent. Make sure to treat differ and extent as factor variables.**
+
+**(a) Build a Weibull model with the above explanatory variables and their two factor interactions. Then choose the best subset of the explanatory variables using the stepwise regression method.**
+
+```{r}
+library(MuMIn)
+library(survival)
+
+col= colon[colon$etype==1,]         #pick the rows with etype==1
+data2a=col[complete.cases(col),]    #get rid of NA values, complete the cases
+
+data2a$differ=as.factor(data2a$differ)
+data2a$extent=as.factor(data2a$extent)
+
+model2a=survreg(formula = Surv(time, status) ~ sex + age + perfor + adhere + nodes + differ + extent
+              + sex*age + sex*perfor + sex*adhere+ sex*nodes +  sex*differ + sex*extent 
+              + age*perfor + age*adhere +age*nodes + age*differ + age*extent
+              + perfor*adhere + perfor*nodes + perfor*differ + perfor*extent
+              + adhere*nodes + adhere*differ + adhere*extent
+              + nodes*differ + nodes*extent
+              + differ*extent, data=data2a, dist="weibull")
+
+best = step(model2a, trace=0)
+summary(best)
+```
+Step function chooses a model with the lowest AIC in a stepwise algorithm, and the best model found to be:
+
+$$Surv(time, status) = sex + age + perfor + adhere + nodes + differ + extent + sex:age + sex:perfor +sex:nodes + \\ sex:extent + age:perfor + age:adhere + age:differ + perfor:nodes + adhere:nodes + nodes:extent$$
+    
+**(b) For the best chosen model, obtain the estimate and 95% CI for the survival probability at time 365, 730, 1095, 1460, 1825 days and for the following set of covariates. Discuss the results.**
+
+```{r}
+zeros = 0*(1:8) 
+data2b=data.frame(
+  sex = c(rep(1,4),rep(0,4)), age = zeros + 60 , perfor = rep(c(0,0,1,1),2),
+  adhere = rep(c(0,1), 4), nodes = zeros + 2, differ = as.factor(zeros + 2), extent = as.factor(zeros + 3)
+  )
+names(data2b)=c("sex","age","perfor","adhere","nodes","differ","extent")
+data2b
+time=365*(1:5)
+
+for(i in 1:5){ 
+
+  tm=time[i] ; lb=ub=si=integer() 
+
+  for(j in 1:nrow(data2b)){   
+
+  d=data2b[j,]; a1=d$sex; a2=d$age; a3=d$perfor; a4=d$adhere; a5=d$nodes; a6=1; a7=1;
+  avec=c(1,a1,a2,a3,a4,a5,a6,0,0,a7,0,a1*a2,a1*a3,a1*a5,0,a1*a7,0,a2*a3, a2*a4,a2*a6,0,a3*a5,a4*a5,0,a5*a7,0);
+  pred=sum(avec*as.vector(best$coefficients));
+
+  estm=(tm*exp(-pred))^(1/best$scale)
+  est=exp(-estm)
+  si=c(si,est) 
+
+  sestar= deltamethod(~(tm*exp(-x1-a1*x2-a2*x3-a3*x4-a4*x5-a5*x6-a6*x7-0*x8-0*x9-a7*x10-
+                              0*x11-(a1*a2)*x12-(a1*a3)*x13-(a1*a5)*x14-0*x15-(a1*a7)*x16-
+                              0*x17-(a2*a3)*x18-(a2*a4)*x19-(a2*a6)*x20-0*x21-(a3*a5)*x22-
+                              (a4*a5)*x23-0*x24-(a5*a7)*x25-0*x26))^(1/exp(x27)),
+                         c(as.vector(best$coefficients), log(best$scale)),best$var)
+  lb=c(lb,exp(-estm-1.96*sestar))
+  ub=c(ub,min(1,exp(-estm+1.96*sestar)))
+  }
+CI=data.frame("time"=tm,"new_data"=(1:nrow(data2b)),"lower_bound"=lb,"estimate"=si,"upper_bound"=ub)
+print(CI)
+}
+```
+
+As time increases (1 year, 2 years, ..., 5 years) the survival probability estimates are decreasing and the confidence intervals are getting narrower however se values are increasing, simultaneously. Now, fixing a time period (year 1), and comparing affects of perfor and adhere on Males and Females we see that:
+
+1) Males with perforation of colon and no adherence to nearby organs have the highest survival probability, whereas males without perforation of colon and adherence to nearby organs have the lowest survival probability.
+
+2) Females without perforation of colon and no adherence to nearby organs have the highest survival probability, whereas males with perforation of colon and adherence to nearby organs have the lowest survival probability.
+
+In addition, looking at the first 4 and last for rows of each year we see that gender has no clear effect. If we compare row 1, row 3, row 7 (perfor effect) we can see that perforation of colon in males increases the surival probability while it decreases in females. Similary, if we compare row 1, row 2, and row 6 (adhere affect) we see that adherence to nearby organs clearly decreases survival probability for each gender.
+
+**(c) Consider the Weibull model with age, sex, treatment, and nodes and their two factor interactions as the explanatory variables. Then conduct a likelihood ratio test using the anova function if age has a statistically significant effect on the model. Full points will be given only for properly writing the hypotheses, test statistics, p-value, and conclusions.**
+
+```{r}
+library(survival)
+
+col= colon[colon$etype==1,]        #pick the rows with etype==1
+data2c=col[complete.cases(col),]   #get rid of NA values, complete the cases
+treatment = as.factor(data2c$rx)
+model2c1=survreg(formula = Surv(time, status) ~ age + sex + treatment + nodes
+                 + age:sex + age:treatment + age:nodes
+                 + sex:treatment + sex:nodes
+                 + treatment:nodes, data = data2c, dist = "weibull")
+
+model2c2=survreg(formula = Surv(time, status) ~ sex + treatment + nodes
+                 + sex:treatment + sex:nodes
+                 + treatment:nodes, data = data2c, dist = "weibull")
+anova(model2c2, model2c1)
+
+# To make sure my p-value is correct, I have calculated it by hand as well
+
+LRtest = as.numeric(-2*(logLik(model2c2)-logLik(model2c1)))
+print(LRtest)
+p = 1 - pchisq(12.47309, 5)
+print(p)
+```
+
+The hypothesis for the problem can be written as below:
+
+$$H_0: Age=0 \ \ \text{(Age has no effect on the time to recurrence)},$$
+$$H_a: Age \neq 0 \ \ \text{(Age has a statistically significant effect on the time to recurrence)}$$.
+
+The test statistic is $12.47309$ with a corresponding $p-value=0.02884999$. Therefore, we reject $H_0$ at the 5% level, and conclude that age has statistically significant effect on the time to recurrence. 

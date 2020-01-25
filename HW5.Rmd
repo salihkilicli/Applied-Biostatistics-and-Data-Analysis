@@ -1,0 +1,142 @@
+---
+title: "STAT645 - Homework 5"
+author: "Salih Kilicli"
+date: "10/1/2019"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(MASS)
+library(DescTools)
+setwd("~/Desktop/STAT645/Data")
+```
+
+**Problem 1: Suppose that a pilot study was conducted to assess the feasibility of patient recruitment, the ability
+of patients and clinicians to comply with study protocols, and the use of data collection instruments to collect cost-effective data, and to obtain variability estimates for sample-size calculations for a full-scale trial. Suppose that twenty patients were randomized into the study with treatment and control group. Out of twelve patients in the treatment, $8$ showed substantial improvements in the main patient-rated outcomes at the end of the $12$-week intervention phase. Let $\pi$ be the proportion patients who showed substantial improvements in the main patient-rated outcomes at the end of the $12$-week intervention phase in the treatment group.**
+
+**(a) Construct two-sided $95\%$ confidence interval for $\pi$ using Agresti-Coull, Jeffreys, Wilson, Clopper-Pearson methods.**
+
+```{r}
+library(DescTools)
+cinterval=c("agresti-coul","jeffreys", "wilson", "clopper-pearson")
+BinomCI(8, 12, conf.level=0.95, sides="two.sided", method=cinterval) # 8 no of succes, 12 sample size 
+```
+
+**(b) What would be the required sample size for the actual study if we want to test $H_0: \pi = 0.6 \ \text{versus} \ H_a: \pi > 0.6$ at the $5\%$ level, and we desire to have $90\%$ power to reject $H_0$ when in fact $\pi = 0.7$?**
+
+```{r}
+pi0=0.6; a=0.05;   # 1-sided z_crit=qnorm(1-a) whereas 2-sided z_crit=qnorm(1-a/2) (quantile)
+pi1=0.7; b=0.10;   # to find p value for a given z use pnorm(z)
+n=((qnorm(1-a)*sqrt(pi0*(1-pi0))+qnorm(1-b)*sqrt(pi1*(1-pi1)))/(pi1-pi0))^2
+cat('The required sample size for one sided alternative is n =', n)
+```
+
+**(c) Recalculate the needed sample size for the above scenario considering that there is a possibility of $35\%$ drop-out or study non-compliance.**
+
+```{r}
+n1=n/(1-0.35)
+cat('The required sample size considering 35% drop-out or non-compliance possibility is n* =', ceiling(n1))
+```
+
+**Problem 2: Suppose in an observational study on PTSD we have obtained the following data. Test at the $5\%$
+level if there is any association between PTSD and gender. Write the hypothesis, do the analysis, and write your conclusion. Use the both methods, the chi-square test of independence and the odds ratio approach.**
+
+| PTSD | Gender(M) | Gender(F) |
+|------|-----------|-----------|
+|  Y   |    40     |     60    |
+|  N   |   280     |    156    |
+
+$H_0:$ There is no association between two variables, PTSD and Gender
+$H_a:$ There exists an association between two variables, PTSD and Gender
+
+```{r}
+library(MASS)
+PTSD=matrix(c(40,60,280,156),ncol=2,byrow=TRUE)
+rownames(PTSD)=c("Y","N")
+colnames(PTSD)=c("Gender(M)","Gender(F)")
+PTSD=as.table(PTSD)
+PTSD
+chsq=chisq.test(PTSD, correct=F)
+cat('p-value using chisquared test is p =', chsq$p.value, 'which is much smaller than alpha=0.05')
+orhat=(156*40)/(60*280)# ORhat=[pr(A=1|B=1)pr(A=0|B=0)]/[pr(A=0|B=1)pr(A=1|B=0)]=[n_11xn_00]/[n_01xn_10]
+lorhat=log(orhat)      # log(ORhat)=log([n_11xn_00]/[n_01xn_10])
+stder=sqrt(1/40+1/60+1/280+1/156) # Tao=sqrt(1/n_11+1/n_00+1/n_01+1/n_10)
+CI=lorhat+c(-1,1)*qnorm(1-0.05/2)*stder
+cat('95% CI for log(ORhat) is given by CI =', CI, 'which clearly doesnt contain 0')
+```
+ 
+Both of the methods implies that the data provide a strong evidence that the two variables are associated. Because in chisq test we found that p << 0.05 and 0 is not in the %95 confidence interval for log(\hat{OR}).
+ 
+ 
+**Problem 3: . Consider the Pima.tr dataset in library(MASS). This dataset contains information on some $200$ Pima
+Indian women who were all at least $21$ years old. Please look at https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Pima.tr.html for details of the data. Suppose that interest is finding association between type and npreg, glu, bp, skin, bmi, ped, age. Before the analysis, tranform glu, bp, bmi, ped, age into variables that have zero mean and standard deviation one.**
+
+**(a) Test if age is positively associated with the disease (chances of the disease).**
+
+```{r}
+library(MASS)
+attach(Pima.tr)
+glu0=as.vector((scale(glu, center=T, scale=T)))
+bp0=as.vector((scale(bp, center=T, scale=T)))
+bmi0=as.vector((scale(bmi, center=T, scale=T)))
+ped0=as.vector((scale(ped, center=T, scale=T)))
+age0=as.vector((scale(age, center=T, scale=T)))
+
+logit=glm(type~npreg+glu0+bp0+skin+bmi0+ped0+age0, family="binomial")
+summary(logit)
+
+T=(0.452007-0)/0.242458  # T= (\hat{\beta_age}-0)/se(\hat{\beta_age}) Test statistic for H_0=\beta_age=0
+p=length(logit$coefficients)
+n=length(age0)
+CI=0.452007+qt(1-0.05,n-p)*0.242458
+OCI=c(CI,Inf)
+cat("One sided interval for %95 confidence is",OCI)
+
+cat("One sided p-value of age0 is the half of the two-sided p-value, where p=", 0.06228/2)
+```
+
+For this problem $H_0: \hat{\beta}_{age0}=0$, whereas the alternative hypothesis is given by $H_a: \hat{\beta}_{age0}>0$. At $\%5$ level since one sided CI doesn't include 0 or one-sided $p_{value}<0.05$, we reject the Null hypothesis. Thus, there is enough evidence that age is positively related with the disease.
+
+
+**(b) Test $H_0 : \beta_{skin} = \beta_{bp} = \beta_{bmi} = 0$ at the $5\%$ level. Use both the likelihood ratio and Wald test approaches.**
+
+```{r}
+library(aod)
+logit.ha=glm(type~npreg+glu0+bp0+skin+bmi0+ped0+age0, family="binomial")
+logit.h0=glm(type~npreg+glu0+ped0+age0, family="binomial")
+anova(logit.h0,logit.ha, test="LRT") # LRH - Likelihood Ratio Test
+wald.test(b=coef(logit), Sigma=vcov(logit), Terms=4:6)
+```
+
+**(c) Provide a Cook’s distance plot and check if there is any influential observation.**
+
+```{r}
+CooksDistance=cooks.distance(logit)
+summary(CooksDistance)
+Q3R=7.295e-03
+Q1R=2.376e-04
+IQR=Q3R-Q1R
+plot(CooksDistance, main="Cook's Distance vs Index Plot", pch=21, col="blue", bg=1)
+abline(h=Q3R+3*IQR, col='red')
+index=CooksDistance[which(CooksDistance>Q3R+3*IQR)]
+cat("Indexes and values of influential observations are given by \n")
+index
+cat("Number of influential points is", length(index))
+```
+
+**(d) Consider the model containing, npreg, glu, ped, age, age^2, ped×age, glu×age, glu×ped as
+explanatory variables. Do a stepwise regression to find the the best fitted model for this data
+based on the above specified explanatory variables [Hint use the step(obj) function].**
+
+```{r}
+logit1=glm(type~npreg+glu0+ped0+age0+I(age0^2)+I(ped0*age0)+I(glu0*age0)+I(glu0*ped0), family="binomial")
+step(logit1)
+```
+
+

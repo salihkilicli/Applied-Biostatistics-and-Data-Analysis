@@ -1,0 +1,139 @@
+---
+title: "STAT645 - Homework 2"
+author: "Salih Kilicli"
+date: "9/3/2019"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: 
+    latex_engine: lualatex
+editor_options:
+  chunk_output_type: inline
+---
+
+**Problem 1: With the calcium data in “calcium.txt,” consider the Decrease variable as your response
+and Treatment as your treatment. In what follows, I have recoded Treatment to equal 0 for
+placebo and 1 for calcium treatment.**
+
+**(a) For the regression model $Decrease_i = \beta_0 + \beta_1 Treatment_i + \epsilon_i$, write down the model matrix.**
+
+The model can be defined as $Y=X \beta + \epsilon$ where the model matrix, $X$, is given by:
+
+\[X=\begin{bmatrix}
+1&1\\
+\vdots&\vdots\\
+1&1\\
+1&0\\
+1&0\\
+\vdots&\vdots\\
+1&0\\
+\end{bmatrix}_{21x2}, \qquad Y=\begin{bmatrix}
+y_1\\
+\vdots\\
+\vdots\\
+\vdots\\
+\vdots\\
+y_{21}\\
+\end{bmatrix}_{21x1}, \qquad \epsilon=\begin{bmatrix}
+e_1\\
+\vdots\\
+\vdots\\
+\vdots\\
+\vdots\\
+e_{21}\\
+\end{bmatrix}_{21x1}, \qquad \beta=\begin{bmatrix}
+\beta_1\\
+\beta_2\
+\end{bmatrix}_{2x1}\]
+
+Notice, above $X$ is a $21x2$ matrix whose second column consists of 10 ones and 11 zeros representing calcium treatment and placebo treatment, respectively.
+
+
+**(b) Fit the above model, and report the coefficient estimates and standard errors.**
+
+```{r}
+setwd("~/Desktop/STAT645/Data")
+calc <- read.table("calcium.txt", header=TRUE)
+model1 = lm(Decrease ~ Treatment, data = calc)
+summary(model1)
+```
+
+**(c) Based on the model, what is the p-value for the null hypothesis of no treatment effect?**
+
+```{r}
+p = summary(model1)[["coefficients"]][2,4]
+cat("p-value for the null hypothesis of no treatment effect is p =", p)
+```
+
+**(d) Now analyze the same data using a two-sample t-test, assuming equal variances. How
+do the results compare to those you obtained using the regression model?**
+
+```{r}
+
+```
+
+**(e) Assuming that the $\epsilon_i$ are normally distributed, what is the estimated distribution of
+$Decrease$ when $Treatment = 1$?**
+
+```{r}
+
+```
+
+
+**Problem 2: With the onset data in “onset data.csv,” conduct the following analysis.**
+
+**(a) Create side-by-side box plots comparing time to onset with (i) the tx variable and (ii)
+the prior variable. Comment.**
+
+```{r}
+setwd("~/Desktop/STAT645/Data")
+ons = read.csv("onset_data.csv", header=TRUE)
+par(mfrow = c(1,2))
+boxplot(onset ~ tx, data = ons, col = rainbow(2), las=1)
+boxplot(onset ~ prior, data = ons, col = rainbow(2), las=1)
+```
+
+**(b) Create a scatterplot of onset vs. age. Color code the points by prior status. Also, fit
+and overlay separate lowess curves, one each for prior = 0 and prior = 1.**
+
+```{r}
+attach(ons)
+plot(onset, age, col = rainbow(2), las=1)
+lines(lowess(onset,age), col="purple")
+lines(lowess(onset,age+prior), col="green")
+```
+
+**(c) Fit the regression model
+$$y_i = \beta_0 + \beta_1 tx_i + \beta_2 prior_i + \beta_3 age_i + \beta_4 (prior × age)_i + \epsilon_i$$
+Interpret all coefficients and report their estimates and standard errors.**
+
+```{r}
+model2 = lm(onset ~ tx + prior + age + I(prior*age))
+summary(model2)
+```
+
+**(d) Use matrix manipulation using a design matrix to verify the estimates and standard
+errors from above.**
+
+**(e) What is a 95% confidence interval for the mean difference in onset times between the
+treatment and control groups, holding prior status and age constant?**
+
+**(f) What is a 95% confidence interval for the mean response of a treated individual, age 35,
+with no prior tumor incidence?**
+
+**3. Suppose that $y_1, y_2, . . . , y_n$ are i.i.d. realizations from the $N(0, \sigma^2)$ distribution. Derive the
+maximum likelihood estimator of $\sigma^2$.**
+
+```{r}
+ 
+```
+
+**Problem 4: Suppose the times to infection following exposure to a particular bacteria follow the gamma
+distribution with shape parameter $\alpha$, scale parameter $\beta$, and pdf 
+$$f(x) = \dfrac{1}{\Gamma(\alpha)\beta^{\alpha}}x^{\alpha-1}e^{-x/\beta}$$
+Use the *nlm* function in R to compute the maximum likelihood estimates for the data in
+“gamma.csv.” **
+
+```{r}
+
+```
