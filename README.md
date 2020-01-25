@@ -9,3 +9,6 @@ Topics covered:
 5) Sample size calculation by simulation, bootstrap techniques for assessing statistical significance
 6) Data analysis using R
 
+Some of the solutions are imperfect and might need improvement, if you notice so, please let me know.
+
+
