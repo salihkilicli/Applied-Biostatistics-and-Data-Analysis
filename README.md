@@ -1,5 +1,5 @@
 # Applied-Biostatistics-and-Data-Analysis
-My homework solutions in R Markdown for the Ph.D. level statistics course (STAT 645) in TAMU.
+My homework solutions (in R Markdown) for the Ph.D. level statistics course (STAT 645) I have taken at TAMU.
 
 Topics covered: 
 1) Survey of crucial topics in biostatistics, application of linear regression in biostatistics
